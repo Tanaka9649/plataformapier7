@@ -4,20 +4,9 @@ import TopBar from "../components/TopBar";
 import LeadDetailPanel from "../components/LeadDetailPanel";
 import ImportLeadsModal from "../components/ImportLeadsModal";
 import { client, Company, CrmPipeline, CrmStage, CrmLead, getOrCreateAppUserId, logAudit } from "../lib/neonClient";
+import { useIsMobile } from "../lib/useIsMobile";
 
 type Tag = { id: string; name: string; color: string };
-
-function useIsMobile(breakpoint = 720) {
-  const [isMobile, setIsMobile] = useState(
-    typeof window !== "undefined" ? window.innerWidth < breakpoint : false
-  );
-  useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < breakpoint);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [breakpoint]);
-  return isMobile;
-}
 
 export default function CrmPage() {
   const { slug } = useParams();
@@ -78,7 +67,7 @@ export default function CrmPage() {
     setPipeline(p);
 
     const [s, l] = await Promise.all([
-      client.from("crm_stages").select("*").eq("pipeline_id", p.id).order("position", { ascending: true }),
+      client.from("crm_stages").select("*").eq("pipeline_id", p.id).eq("archived", false).order("position", { ascending: true }),
       client
         .from("crm_leads")
         .select("*")
@@ -308,8 +297,16 @@ export default function CrmPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px 12px" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: stage.color }} />
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{stage.name}</span>
-                  <span style={{ fontSize: 12, color: "var(--ink-faint)", marginLeft: "auto" }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: stage.wip_limit != null && stageLeads.length > stage.wip_limit ? 700 : 400,
+                      color: stage.wip_limit != null && stageLeads.length > stage.wip_limit ? "var(--red-500)" : "var(--ink-faint)",
+                      marginLeft: "auto",
+                    }}
+                  >
                     {stageLeads.length}
+                    {stage.wip_limit != null ? `/${stage.wip_limit}` : ""}
                   </span>
                 </div>
 

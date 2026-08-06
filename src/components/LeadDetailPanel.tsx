@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { client, CrmLead, logAudit } from "../lib/neonClient";
+import { client, CrmLead, CrmCustomField, CrmCustomFieldValue, logAudit } from "../lib/neonClient";
 
 type Tag = { id: string; company_id: string; name: string; color: string };
 type Note = { id: string; lead_id: string; body: string; created_at: string };
@@ -57,9 +57,15 @@ export default function LeadDetailPanel({
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDue, setNewTaskDue] = useState("");
 
+  const [customFields, setCustomFields] = useState<CrmCustomField[]>([]);
+  // custom_field_id -> valor atual (string; para multipla_selecao, valores separados por "|")
+  const [customValues, setCustomValues] = useState<Record<string, string>>({});
+  // custom_field_id -> id da linha em crm_custom_field_values, se já existir (pra saber se é insert ou update)
+  const [customValueRowIds, setCustomValueRowIds] = useState<Record<string, string>>({});
+
   useEffect(() => {
     (async () => {
-      const [tagsRes, leadTagsRes, notesRes, historyRes, tasksRes] = await Promise.all([
+      const [tagsRes, leadTagsRes, notesRes, historyRes, tasksRes, customFieldsRes, customValuesRes] = await Promise.all([
         client.from("crm_tags").select("*").eq("company_id", companyId),
         client.from("crm_lead_tags").select("tag_id").eq("lead_id", lead.id),
         client.from("crm_notes").select("*").eq("lead_id", lead.id).order("created_at", { ascending: false }),
@@ -69,6 +75,8 @@ export default function LeadDetailPanel({
           .eq("lead_id", lead.id)
           .order("changed_at", { ascending: false }),
         client.from("crm_tasks").select("*").eq("lead_id", lead.id).order("due_at", { ascending: true }),
+        client.from("crm_custom_fields").select("*").eq("company_id", companyId).order("position", { ascending: true }),
+        client.from("crm_custom_field_values").select("*").eq("lead_id", lead.id),
       ]);
       if (tagsRes.error) return setError(tagsRes.error.message);
       setAllTags(tagsRes.data as Tag[]);
@@ -77,6 +85,16 @@ export default function LeadDetailPanel({
       const historyRows = (historyRes.data as HistoryEntry[]) ?? [];
       setHistory(historyRows);
       setTasks((tasksRes.data as Task[]) ?? []);
+      setCustomFields((customFieldsRes.data as CrmCustomField[]) ?? []);
+
+      const values: Record<string, string> = {};
+      const rowIds: Record<string, string> = {};
+      ((customValuesRes.data as CrmCustomFieldValue[]) ?? []).forEach((v) => {
+        values[v.custom_field_id] = v.value ?? "";
+        rowIds[v.custom_field_id] = v.id;
+      });
+      setCustomValues(values);
+      setCustomValueRowIds(rowIds);
 
       const userIds = Array.from(new Set(historyRows.map((h) => h.user_id).filter(Boolean))) as string[];
       if (userIds.length > 0) {
@@ -89,6 +107,29 @@ export default function LeadDetailPanel({
       }
     })();
   }, [lead.id, companyId]);
+
+  async function saveCustomValue(fieldId: string, value: string) {
+    setCustomValues((prev) => ({ ...prev, [fieldId]: value }));
+    const existingRowId = customValueRowIds[fieldId];
+    if (existingRowId) {
+      const { error: updErr } = await client.from("crm_custom_field_values").update({ value }).eq("id", existingRowId);
+      if (updErr) setError(updErr.message);
+    } else {
+      const { data, error: insErr } = await client
+        .from("crm_custom_field_values")
+        .insert({ lead_id: lead.id, custom_field_id: fieldId, value })
+        .select();
+      if (insErr) return setError(insErr.message);
+      const created = (data as CrmCustomFieldValue[])?.[0];
+      if (created) setCustomValueRowIds((prev) => ({ ...prev, [fieldId]: created.id }));
+    }
+  }
+
+  function toggleMultiSelectValue(fieldId: string, option: string) {
+    const current = (customValues[fieldId] ?? "").split("|").filter(Boolean);
+    const next = current.includes(option) ? current.filter((o) => o !== option) : [...current, option];
+    saveCustomValue(fieldId, next.join("|"));
+  }
 
   async function addTask() {
     if (!newTaskTitle.trim()) return;
@@ -276,6 +317,23 @@ export default function LeadDetailPanel({
           </div>
         </FieldGroup>
 
+        {customFields.length > 0 && (
+          <>
+            <Divider />
+            <SectionLabel>Campos personalizados</SectionLabel>
+            {customFields.map((f) => (
+              <FieldGroup key={f.id} label={f.name}>
+                <CustomFieldInput
+                  field={f}
+                  value={customValues[f.id] ?? ""}
+                  onChange={(v) => saveCustomValue(f.id, v)}
+                  onToggleMulti={(opt) => toggleMultiSelectValue(f.id, opt)}
+                />
+              </FieldGroup>
+            ))}
+          </>
+        )}
+
         <button
           onClick={save}
           disabled={saving}
@@ -420,6 +478,98 @@ export default function LeadDetailPanel({
       </div>
     </div>
   );
+}
+
+function CustomFieldInput({
+  field,
+  value,
+  onChange,
+  onToggleMulti,
+}: {
+  field: import("../lib/neonClient").CrmCustomField;
+  value: string;
+  onChange: (v: string) => void;
+  onToggleMulti: (option: string) => void;
+}) {
+  switch (field.field_type) {
+    case "texto_longo":
+      return (
+        <textarea
+          defaultValue={value}
+          onBlur={(e) => onChange(e.target.value)}
+          rows={3}
+          style={{ ...inputStyle, resize: "vertical" }}
+        />
+      );
+    case "numero":
+      return <input type="number" defaultValue={value} onBlur={(e) => onChange(e.target.value)} style={inputStyle} />;
+    case "moeda":
+      return (
+        <input
+          type="number"
+          step="0.01"
+          placeholder="R$ 0,00"
+          defaultValue={value}
+          onBlur={(e) => onChange(e.target.value)}
+          style={inputStyle}
+        />
+      );
+    case "data":
+      return <input type="date" defaultValue={value} onChange={(e) => onChange(e.target.value)} style={inputStyle} />;
+    case "telefone":
+      return <input type="tel" defaultValue={value} onBlur={(e) => onChange(e.target.value)} style={inputStyle} />;
+    case "email":
+      return <input type="email" defaultValue={value} onBlur={(e) => onChange(e.target.value)} style={inputStyle} />;
+    case "caixa_selecao":
+      return (
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+          <input type="checkbox" checked={value === "true"} onChange={(e) => onChange(e.target.checked ? "true" : "false")} />
+          Sim
+        </label>
+      );
+    case "selecao":
+      return (
+        <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...inputStyle, background: "var(--surface)" }}>
+          <option value="">—</option>
+          {(field.options ?? []).map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      );
+    case "multipla_selecao": {
+      const selected = value.split("|").filter(Boolean);
+      return (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {(field.options ?? []).map((opt) => {
+            const active = selected.includes(opt);
+            return (
+              <button
+                key={opt}
+                onClick={() => onToggleMulti(opt)}
+                type="button"
+                style={{
+                  fontSize: 11.5,
+                  padding: "4px 10px",
+                  borderRadius: 20,
+                  border: `1px solid ${active ? "var(--blue-500)" : "var(--border)"}`,
+                  background: active ? "var(--blue-500)1A" : "var(--surface)",
+                  color: active ? "var(--blue-600)" : "var(--ink-faint)",
+                  fontWeight: 600,
+                }}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+    case "texto":
+    default:
+      return <input type="text" defaultValue={value} onBlur={(e) => onChange(e.target.value)} style={inputStyle} />;
+  }
 }
 
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {

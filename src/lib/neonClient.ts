@@ -87,6 +87,25 @@ export async function logAudit(
 
 
 // Tipos das tabelas usadas pela plataforma
+export type ManualRevenue = {
+  id: string;
+  company_id: string;
+  amount: number;
+  description: string | null;
+  revenue_date: string;
+  created_at: string;
+};
+
+export type AppUser = {
+  id: string;
+  neon_auth_user_id: string | null;
+  full_name: string | null;
+  email: string | null;
+  role: "admin" | "operator";
+  active: boolean;
+  created_at: string;
+};
+
 export type Company = { id: string; name: string; slug: string; status: string };
 
 export type AdMetricDaily = {
@@ -120,7 +139,24 @@ export type CrmStage = {
   name: string;
   color: string;
   position: number;
+  wip_limit: number | null;
+  archived: boolean;
 };
+export type CrmCustomField = {
+  id: string;
+  company_id: string;
+  name: string;
+  field_type: "texto" | "texto_longo" | "numero" | "moeda" | "data" | "telefone" | "email" | "caixa_selecao" | "selecao" | "multipla_selecao";
+  options: string[] | null;
+  position: number;
+};
+export type CrmCustomFieldValue = {
+  id: string;
+  lead_id: string;
+  custom_field_id: string;
+  value: string | null;
+};
+
 export type CrmLead = {
   id: string;
   company_id: string;

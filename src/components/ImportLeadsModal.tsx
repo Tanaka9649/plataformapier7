@@ -151,7 +151,8 @@ export default function ImportLeadsModal({
       const cityCol = Object.entries(mapping).find(([, v]) => v === "city")?.[0];
       const segmentCol = Object.entries(mapping).find(([, v]) => v === "segment")?.[0];
       const revenueCol = Object.entries(mapping).find(([, v]) => v === "revenue")?.[0];
-      const revenueRaw = revenueCol ? (row[revenueCol] ?? "").replace(/[^\d,.-]/g, "").replace(",", ".") : "";
+      // formato brasileiro: "." é separador de milhar, "," é decimal — ex "1.500,00" -> 1500.00
+      const revenueRaw = revenueCol ? (row[revenueCol] ?? "").replace(/[^\d,.-]/g, "").replace(/\./g, "").replace(",", ".") : "";
       candidates.push({
         name,
         phone: rawPhone || null,
