@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import TopBar from "../components/TopBar";
-import { client, Company, CrmPipeline, CrmStage, CrmCustomField, AppUser, getOrCreateAppUserId } from "../lib/neonClient";
+import { client, Company, CrmPipeline, CrmStage, CrmCustomField, AppUser, Integration, getOrCreateAppUserId } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
 
 const PALETTE = ["#3068e8", "#1a9c6b", "#c98a1a", "#e0483f", "#8b5cf6", "#0ea5e9", "#94a3b8"];
@@ -16,6 +16,14 @@ const FIELD_TYPE_LABELS: Record<CrmCustomField["field_type"], string> = {
   caixa_selecao: "Caixa de seleção (sim/não)",
   selecao: "Seleção única",
   multipla_selecao: "Seleção múltipla",
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+  meta_ads: "Meta Ads",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  google_my_business: "Google Meu Negócio",
 };
 
 export default function ConfiguracoesPage() {
@@ -36,6 +44,7 @@ export default function ConfiguracoesPage() {
   const [newFieldName, setNewFieldName] = useState("");
   const [newFieldType, setNewFieldType] = useState<CrmCustomField["field_type"]>("texto");
   const [newFieldOptions, setNewFieldOptions] = useState("");
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
 
   const activeStages = stages.filter((s) => !s.archived).sort((a, b) => a.position - b.position);
   const archivedStages = stages.filter((s) => s.archived);
@@ -127,6 +136,15 @@ export default function ConfiguracoesPage() {
       .then(({ data, error: fErr }) => {
         if (fErr) return setError(fErr.message);
         setCustomFields((data as CrmCustomField[]) ?? []);
+      });
+
+    client
+      .from("integrations")
+      .select("*")
+      .eq("company_id", companyId)
+      .then(({ data, error: iErr }) => {
+        if (iErr) return setError(iErr.message);
+        setIntegrations((data as Integration[]) ?? []);
       });
 
     const { data: pipelines, error: pErr } = await client
@@ -658,6 +676,56 @@ export default function ConfiguracoesPage() {
               >
                 + Adicionar campo
               </button>
+            </div>
+          </section>
+        )}
+
+        {selectedCompanyId && (
+          <section style={{ marginTop: 40 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Integrações</h2>
+            <p style={{ fontSize: 12.5, color: "var(--ink-faint)", marginTop: -8, marginBottom: 16 }}>
+              Só leitura — mostra o que está conectado pra essa empresa. Pra conectar ou desconectar uma integração, isso é
+              feito direto no Windsor.ai, não aqui.
+            </p>
+            <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+              {integrations.map((i) => (
+                <div
+                  key={i.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "12px 16px",
+                    borderBottom: "1px solid var(--border)",
+                  }}
+                >
+                  <span style={{ flex: "1 1 140px", fontSize: 13, fontWeight: 600 }}>
+                    {PROVIDER_LABELS[i.provider] ?? i.provider}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      padding: "4px 10px",
+                      borderRadius: 20,
+                      background: i.status === "connected" ? "var(--green-50)" : "var(--surface)",
+                      color: i.status === "connected" ? "var(--green-500)" : "var(--ink-faint)",
+                    }}
+                  >
+                    {i.status === "connected" ? "Conectado" : i.status === "not_connected" ? "Não conectado" : i.status}
+                  </span>
+                  <span style={{ fontSize: 11.5, color: "var(--ink-faint)", marginLeft: "auto" }}>
+                    {i.last_sync_at
+                      ? `Última sincronização: ${new Date(i.last_sync_at).toLocaleString("pt-BR")}`
+                      : "Nunca sincronizado"}
+                  </span>
+                </div>
+              ))}
+              {integrations.length === 0 && (
+                <div style={{ padding: 16, fontSize: 12.5, color: "var(--ink-faint)" }}>
+                  Nenhuma integração registrada pra essa empresa ainda.
+                </div>
+              )}
             </div>
           </section>
         )}

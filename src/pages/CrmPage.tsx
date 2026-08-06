@@ -1,10 +1,13 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import LeadDetailPanel from "../components/LeadDetailPanel";
-import ImportLeadsModal from "../components/ImportLeadsModal";
 import { client, Company, CrmPipeline, CrmStage, CrmLead, getOrCreateAppUserId, logAudit } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
+
+// xlsx sozinho é ~7MB de fonte — só carrega quando a pessoa realmente abre "Importar leads",
+// em vez de entrar no bundle inicial do CRM pra todo mundo.
+const ImportLeadsModal = lazy(() => import("../components/ImportLeadsModal"));
 
 type Tag = { id: string; name: string; color: string };
 
@@ -525,13 +528,33 @@ export default function CrmPage() {
       )}
 
       {showImport && company && pipeline && (
-        <ImportLeadsModal
-          companyId={company.id}
-          pipelineId={pipeline.id}
-          stages={stages}
-          onClose={() => setShowImport(false)}
-          onImported={load}
-        />
+        <Suspense
+          fallback={
+            <div
+              style={{
+                position: "fixed",
+                inset: 0,
+                background: "rgba(16,26,46,0.35)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 60,
+                color: "#fff",
+                fontSize: 13,
+              }}
+            >
+              Carregando…
+            </div>
+          }
+        >
+          <ImportLeadsModal
+            companyId={company.id}
+            pipelineId={pipeline.id}
+            stages={stages}
+            onClose={() => setShowImport(false)}
+            onImported={load}
+          />
+        </Suspense>
       )}
     </div>
   );

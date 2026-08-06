@@ -96,6 +96,15 @@ export type ManualRevenue = {
   created_at: string;
 };
 
+export type Integration = {
+  id: string;
+  company_id: string;
+  provider: string;
+  status: string;
+  external_id: string | null;
+  last_sync_at: string | null;
+};
+
 export type AppUser = {
   id: string;
   neon_auth_user_id: string | null;
