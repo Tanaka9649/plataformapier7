@@ -1,0 +1,87 @@
+:root {
+  /* Cor */
+  --bg: #ffffff;
+  --surface: #f6f8fc;
+  --surface-hover: #eef2fa;
+  --border: #e6ebf3;
+  --border-strong: #d7deeb;
+
+  --ink: #101a2e;
+  --ink-soft: #4b5870;
+  --ink-faint: #8592a8;
+
+  --blue-50: #eef4ff;
+  --blue-100: #dce8ff;
+  --blue-500: #3068e8;
+  --blue-600: #2455c7;
+  --blue-700: #1c44a3;
+
+  --green-500: #1a9c6b;
+  --green-50: #e7f7f0;
+  --red-500: #e0483f;
+  --red-50: #fdecea;
+  --amber-500: #c98a1a;
+  --amber-50: #fbf1de;
+
+  /* Sombra: extremamente suave, nunca pesada */
+  --shadow-sm: 0 1px 2px rgba(16, 26, 46, 0.04);
+  --shadow-md: 0 4px 16px rgba(16, 26, 46, 0.06);
+  --shadow-lg: 0 12px 32px rgba(16, 26, 46, 0.08);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+
+  --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue-500);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}

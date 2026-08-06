@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PIER7 — Plataforma de Marketing e CRM</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-fallback" style="font-family: system-ui, sans-serif; padding: 40px; color: #101a2e; max-width: 640px; margin: 0 auto;">
+        <h2 style="font-size: 16px;">Carregando…</h2>
+        <p style="font-size: 13px; color: #8592a8;">Se esta mensagem não sumir em alguns segundos, algo falhou ao iniciar. Role para baixo se um erro aparecer aqui.</p>
+      </div>
+    </div>
+    <script>
+      // Rede de segurança: se qualquer erro não tratado acontecer antes do React
+      // conseguir montar a árvore, mostramos o erro real na tela em vez de deixar
+      // a página em branco sem nenhuma pista.
+      window.addEventListener('error', function (event) {
+        var el = document.getElementById('boot-fallback');
+        if (!el) return;
+        el.innerHTML =
+          '<h2 style="font-size:16px;color:#e0483f;">Erro ao carregar a plataforma</h2>' +
+          '<pre style="white-space:pre-wrap;font-size:12px;background:#fdecea;color:#e0483f;padding:12px;border-radius:8px;">' +
+          (event.message || 'Erro desconhecido') +
+          (event.filename ? '\n' + event.filename + ':' + event.lineno : '') +
+          '</pre>' +
+          '<p style="font-size:12px;color:#8592a8;">Copie esse texto e envie — isso diz exatamente o que travou.</p>';
+      });
+      window.addEventListener('unhandledrejection', function (event) {
+        var el = document.getElementById('boot-fallback');
+        if (!el) return;
+        el.innerHTML =
+          '<h2 style="font-size:16px;color:#e0483f;">Erro ao carregar a plataforma</h2>' +
+          '<pre style="white-space:pre-wrap;font-size:12px;background:#fdecea;color:#e0483f;padding:12px;border-radius:8px;">' +
+          (event.reason && event.reason.message ? event.reason.message : String(event.reason)) +
+          '</pre>' +
+          '<p style="font-size:12px;color:#8592a8;">Copie esse texto e envie — isso diz exatamente o que travou.</p>';
+      });
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
