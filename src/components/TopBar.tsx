@@ -69,6 +69,7 @@ export default function TopBar({
           <Link
             to="/configuracoes"
             title="Configurações"
+            aria-label="Configurações"
             style={{
               width: 32,
               height: 32,

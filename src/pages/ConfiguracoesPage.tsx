@@ -4,6 +4,15 @@ import { client, Company, CrmPipeline, CrmStage, CrmCustomField, AppUser, Integr
 import { useIsMobile } from "../lib/useIsMobile";
 
 const PALETTE = ["#3068e8", "#1a9c6b", "#c98a1a", "#e0483f", "#8b5cf6", "#0ea5e9", "#94a3b8"];
+const COLOR_NAMES: Record<string, string> = {
+  "#3068e8": "azul",
+  "#1a9c6b": "verde",
+  "#c98a1a": "âmbar",
+  "#e0483f": "vermelho",
+  "#8b5cf6": "roxo",
+  "#0ea5e9": "ciano",
+  "#94a3b8": "cinza",
+};
 
 const FIELD_TYPE_LABELS: Record<CrmCustomField["field_type"], string> = {
   texto: "Texto curto",
@@ -495,6 +504,8 @@ export default function ConfiguracoesPage() {
                         <button
                           key={color}
                           onClick={() => recolorStage(s.id, color)}
+                          aria-label={`Cor ${COLOR_NAMES[color] ?? color} pra coluna "${s.name}"`}
+                          aria-pressed={s.color === color}
                           style={{
                             width: 16,
                             height: 16,
@@ -526,19 +537,19 @@ export default function ConfiguracoesPage() {
                         style={{ width: 48, border: "1px solid var(--border-strong)", borderRadius: 6, padding: "5px 6px", fontSize: 12.5, textAlign: "center" }}
                       />
                     </div>
-                    <button onClick={() => moveStage(s.id, -1)} disabled={i === 0} style={arrowBtn}>
+                    <button onClick={() => moveStage(s.id, -1)} disabled={i === 0} style={arrowBtn} aria-label={`Mover coluna "${s.name}" pra cima`}>
                       ↑
                     </button>
-                    <button onClick={() => moveStage(s.id, 1)} disabled={i === activeStages.length - 1} style={arrowBtn}>
+                    <button onClick={() => moveStage(s.id, 1)} disabled={i === activeStages.length - 1} style={arrowBtn} aria-label={`Mover coluna "${s.name}" pra baixo`}>
                       ↓
                     </button>
-                    <button onClick={() => duplicateStage(s.id)} title="Duplicar coluna" style={arrowBtn}>
+                    <button onClick={() => duplicateStage(s.id)} title="Duplicar coluna" style={arrowBtn} aria-label={`Duplicar coluna "${s.name}"`}>
                       ⧉
                     </button>
-                    <button onClick={() => archiveStage(s.id)} title="Arquivar coluna" style={arrowBtn}>
+                    <button onClick={() => archiveStage(s.id)} title="Arquivar coluna" style={arrowBtn} aria-label={`Arquivar coluna "${s.name}"`}>
                       🗄
                     </button>
-                    <button onClick={() => deleteStage(s.id)} style={{ ...arrowBtn, color: "var(--red-500)" }}>
+                    <button onClick={() => deleteStage(s.id)} style={{ ...arrowBtn, color: "var(--red-500)" }} aria-label={`Excluir coluna "${s.name}"`}>
                       ✕
                     </button>
                   </div>
@@ -625,6 +636,7 @@ export default function ConfiguracoesPage() {
                   <button
                     onClick={() => deleteCustomField(f.id)}
                     style={{ marginLeft: "auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, width: 26, height: 26, fontSize: 12, color: "var(--red-500)" }}
+                    aria-label={`Excluir campo "${f.name}"`}
                   >
                     ✕
                   </button>

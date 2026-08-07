@@ -319,6 +319,7 @@ export default function CompanyPage() {
                     <button
                       onClick={() => deleteRevenue(r)}
                       title="Excluir lançamento"
+                      aria-label={`Excluir lançamento de ${fmtBRL(Number(r.amount))} em ${r.revenue_date.slice(0, 10)}`}
                       style={{ marginLeft: "auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, width: 26, height: 26, fontSize: 12, color: "var(--red-500)", flexShrink: 0 }}
                     >
                       ✕

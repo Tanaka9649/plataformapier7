@@ -232,7 +232,7 @@ export default function ImportLeadsModal({
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Importar leads</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "var(--ink-faint)" }}>✕</button>
+          <button onClick={onClose} aria-label="Fechar importação de leads" style={{ background: "none", border: "none", fontSize: 18, color: "var(--ink-faint)" }}>✕</button>
         </div>
 
         {error && (

@@ -249,7 +249,7 @@ export default function LeadDetailPanel({
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Detalhes do lead</h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, color: "var(--ink-faint)" }}>
+          <button onClick={onClose} aria-label="Fechar painel de detalhes do lead" style={{ background: "none", border: "none", fontSize: 18, color: "var(--ink-faint)" }}>
             ✕
           </button>
         </div>
@@ -309,6 +309,8 @@ export default function LeadDetailPanel({
               <button
                 key={n}
                 onClick={() => setForm({ ...form, score: n })}
+                aria-label={`Definir qualificação como ${n} de 10`}
+                aria-pressed={n <= form.score}
                 style={{ background: "none", border: "none", fontSize: 18, color: n <= form.score ? "var(--amber-500)" : "var(--border-strong)" }}
               >
                 ★
