@@ -67,6 +67,25 @@ export async function getOrCreateAppUserId(): Promise<string | null> {
   return newId;
 }
 
+let cachedRole: "admin" | "operator" | null = null;
+
+/**
+ * Papel do usuário logado — usado pra esconder/bloquear ações de admin na UI.
+ * A checagem REAL de segurança está no banco (RLS via is_admin()); isto aqui
+ * é só pra não mostrar botões que a pessoa não pode usar. Retorna null se
+ * ainda não foi possível determinar (ex: sessão carregando).
+ */
+export async function getCurrentUserRole(): Promise<"admin" | "operator" | null> {
+  if (cachedRole) return cachedRole;
+  const { data: sessionData } = await client.auth.getSession();
+  const authUser = sessionData?.user;
+  if (!authUser) return null;
+  const { data } = await client.from("app_users").select("role").eq("neon_auth_user_id", authUser.id);
+  const role = (data as { role: "admin" | "operator" }[])?.[0]?.role ?? null;
+  if (role) cachedRole = role;
+  return role;
+}
+
 export async function logAudit(
   entity: string,
   entityId: string | null,

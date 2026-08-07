@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { client } from "../lib/neonClient";
+import { client, getCurrentUserRole } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
 
 export default function TopBar({
@@ -8,6 +9,12 @@ export default function TopBar({
   breadcrumb?: { label: string; to?: string }[];
 }) {
   const isMobile = useIsMobile();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    getCurrentUserRole().then((r) => setIsAdmin(r === "admin"));
+  }, []);
+
   return (
     <header
       style={{
@@ -60,12 +67,12 @@ export default function TopBar({
         ))}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10, flexShrink: 0 }}>
-        {!isMobile && (
+        {isAdmin && !isMobile && (
           <Link to="/configuracoes" style={{ fontSize: 13, color: "var(--ink-soft)", fontWeight: 500 }}>
             Configurações
           </Link>
         )}
-        {isMobile && (
+        {isAdmin && isMobile && (
           <Link
             to="/configuracoes"
             title="Configurações"
