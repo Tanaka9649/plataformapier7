@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import LeadDetailPanel from "../components/LeadDetailPanel";
-import { client, Company, CrmPipeline, CrmStage, CrmLead, getOrCreateAppUserId, logAudit } from "../lib/neonClient";
+import { client, Company, CrmPipeline, CrmStage, CrmLead, getOrCreateAppUserId, getCurrentUserRole, logAudit } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
 
 // xlsx sozinho é ~7MB de fonte — só carrega quando a pessoa realmente abre "Importar leads",
@@ -30,6 +30,11 @@ export default function CrmPage() {
   const [tagFilter, setTagFilter] = useState<string>("");
   const [mobileStageId, setMobileStageId] = useState<string>("");
   const isMobile = useIsMobile();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    getCurrentUserRole().then((r) => setIsAdmin(r === "admin"));
+  }, []);
 
   const filteredLeads = leads.filter((l) => {
     if (search.trim()) {
@@ -471,43 +476,45 @@ export default function CrmPage() {
             );
           })}
 
-          <div style={{ width: isMobile ? "100%" : 220, flexShrink: 0, display: isMobile && !addingStage ? "none" : "block" }}>
-            {addingStage ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <input
-                  autoFocus
-                  value={newStageName}
-                  onChange={(e) => setNewStageName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && createStage()}
-                  placeholder="Nome da coluna"
-                  style={{ border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}
-                />
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={createStage} style={{ background: "var(--blue-500)", color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, fontWeight: 600 }}>
-                    Criar
-                  </button>
-                  <button onClick={() => setAddingStage(false)} style={{ background: "none", border: "none", color: "var(--ink-faint)", fontSize: 12.5 }}>
-                    Cancelar
-                  </button>
+          {isAdmin && (
+            <div style={{ width: isMobile ? "100%" : 220, flexShrink: 0, display: isMobile && !addingStage ? "none" : "block" }}>
+              {addingStage ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <input
+                    autoFocus
+                    value={newStageName}
+                    onChange={(e) => setNewStageName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && createStage()}
+                    placeholder="Nome da coluna"
+                    style={{ border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}
+                  />
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={createStage} style={{ background: "var(--blue-500)", color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, fontWeight: 600 }}>
+                      Criar
+                    </button>
+                    <button onClick={() => setAddingStage(false)} style={{ background: "none", border: "none", color: "var(--ink-faint)", fontSize: 12.5 }}>
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setAddingStage(true)}
-                style={{
-                  border: "1px dashed var(--border-strong)",
-                  borderRadius: "var(--radius-md)",
-                  padding: "14px",
-                  width: "100%",
-                  background: "none",
-                  color: "var(--ink-faint)",
-                  fontSize: 13,
-                }}
-              >
-                + Nova coluna
-              </button>
-            )}
-          </div>
+              ) : (
+                <button
+                  onClick={() => setAddingStage(true)}
+                  style={{
+                    border: "1px dashed var(--border-strong)",
+                    borderRadius: "var(--radius-md)",
+                    padding: "14px",
+                    width: "100%",
+                    background: "none",
+                    color: "var(--ink-faint)",
+                    fontSize: 13,
+                  }}
+                >
+                  + Nova coluna
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
