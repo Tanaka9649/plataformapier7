@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import StatCard from "../components/StatCard";
-import { client, Company, AdMetricDaily, SocialMetricDaily } from "../lib/neonClient";
+import { client, Company, AdMetricDaily, SocialMetricDaily, ManualLead } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
 
 const fmtBRL = (n: number) => "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
@@ -13,21 +13,25 @@ export default function DashboardPage() {
   const [companies, setCompanies] = useState<Company[] | null>(null);
   const [ads, setAds] = useState<AdMetricDaily[] | null>(null);
   const [social, setSocial] = useState<SocialMetricDaily[] | null>(null);
+  const [leadsManual, setLeadsManual] = useState<ManualLead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const [c, a, s] = await Promise.all([
+      const [c, a, s, ml] = await Promise.all([
         client.from("companies").select("id,name,slug,status").order("name", { ascending: true }),
         client.from("ad_metrics_daily").select("company_id,date,spend,impressions,clicks,leads"),
         client.from("social_metrics_daily").select("company_id,network,followers"),
+        client.from("manual_leads").select("company_id,quantity,lead_date"),
       ]);
       if (c.error) return setError(c.error.message);
       if (a.error) return setError(a.error.message);
       if (s.error) return setError(s.error.message);
+      if (ml.error) return setError(ml.error.message);
       setCompanies(c.data as Company[]);
       setAds(a.data as AdMetricDaily[]);
       setSocial(s.data as SocialMetricDaily[]);
+      setLeadsManual(ml.data as ManualLead[]);
     })();
   }, []);
 
@@ -39,7 +43,8 @@ export default function DashboardPage() {
 
   const totalSpend = adsLast30.reduce((sum, r) => sum + Number(r.spend), 0);
   const totalClicks = adsLast30.reduce((sum, r) => sum + Number(r.clicks), 0);
-  const totalLeads = adsLast30.reduce((sum, r) => sum + Number(r.leads), 0);
+  const leadsManualLast30 = (leadsManual ?? []).filter((l) => new Date(l.lead_date) >= cutoff30);
+  const totalLeads = leadsManualLast30.reduce((sum, l) => sum + Number(l.quantity), 0);
   const totalFollowers = social?.reduce((sum, r) => sum + (r.followers ?? 0), 0) ?? 0;
 
   return (
@@ -131,7 +136,7 @@ export default function DashboardPage() {
             <>
               <StatCard label="Investimento total (30d)" value={fmtBRL(totalSpend)} />
               <StatCard label="Cliques totais" value={fmtInt(totalClicks)} />
-              <StatCard label="Leads via Ads" value={fmtInt(totalLeads)} hint="campo populado por integração automática" />
+              <StatCard label="Leads (30d)" value={fmtInt(totalLeads)} hint="somado dos lançamentos manuais de cada empresa" />
               <StatCard label="Seguidores (soma das redes)" value={fmtInt(totalFollowers)} />
             </>
           )}
@@ -139,8 +144,29 @@ export default function DashboardPage() {
 
         {companies && companies.length > 0 && (
           <>
-            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 16px" }}>Comparativo entre empresas</h2>
-            <CompanyComparison companies={companies} ads={adsLast30} isMobile={isMobile} />
+            <h2 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 16px" }}>Comparativo entre empresas (30d)</h2>
+            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 16 }}>
+              <ComparisonBar
+                title="Investimento em tráfego pago por empresa"
+                data={companies.map((c) => ({
+                  name: c.name,
+                  value: adsLast30.filter((a) => a.company_id === c.id).reduce((s, a) => s + Number(a.spend), 0),
+                }))}
+                format={fmtBRL}
+                color="var(--blue-500)"
+                isMobile={isMobile}
+              />
+              <ComparisonBar
+                title="Leads lançados por empresa"
+                data={companies.map((c) => ({
+                  name: c.name,
+                  value: leadsManualLast30.filter((l) => l.company_id === c.id).reduce((s, l) => s + Number(l.quantity), 0),
+                }))}
+                format={fmtInt}
+                color="var(--violet-500)"
+                isMobile={isMobile}
+              />
+            </div>
           </>
         )}
       </main>
@@ -148,36 +174,44 @@ export default function DashboardPage() {
   );
 }
 
-function CompanyComparison({ companies, ads, isMobile }: { companies: Company[]; ads: AdMetricDaily[]; isMobile: boolean }) {
-  const byCompany = companies.map((c) => {
-    const spend = ads.filter((a) => a.company_id === c.id).reduce((s, a) => s + Number(a.spend), 0);
-    return { name: c.name, spend };
-  });
-  const max = Math.max(...byCompany.map((c) => c.spend), 1);
+function ComparisonBar({
+  title,
+  data,
+  format,
+  color = "var(--blue-500)",
+  isMobile,
+}: {
+  title: string;
+  data: { name: string; value: number }[];
+  format: (n: number) => string;
+  color?: string;
+  isMobile: boolean;
+}) {
+  const max = Math.max(...data.map((c) => c.value), 1);
 
   return (
     <div style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-md)", padding: isMobile ? 16 : 20, boxShadow: "var(--shadow-sm)" }}>
       <div style={{ fontSize: 11.5, color: "var(--ink-faint)", fontWeight: 600, marginBottom: 16 }}>
-        Investimento em tráfego pago por empresa (30d)
+        {title}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {byCompany
-          .sort((a, b) => b.spend - a.spend)
+        {data
+          .sort((a, b) => b.value - a.value)
           .map((c) =>
             isMobile ? (
               <div key={c.name} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5 }}>
                   <span style={{ color: "var(--ink-soft)", fontWeight: 500 }}>{c.name}</span>
-                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{fmtBRL(c.spend)}</span>
+                  <span style={{ fontFamily: "var(--font-mono)", color: "var(--ink)" }}>{format(c.value)}</span>
                 </div>
                 <div style={{ background: "var(--surface)", borderRadius: 6, height: 14, position: "relative" }}>
                   <div
                     style={{
-                      width: `${(c.spend / max) * 100}%`,
-                      background: "var(--blue-500)",
+                      width: `${(c.value / max) * 100}%`,
+                      background: color,
                       height: "100%",
                       borderRadius: 6,
-                      minWidth: c.spend > 0 ? 3 : 0,
+                      minWidth: c.value > 0 ? 3 : 0,
                     }}
                   />
                 </div>
@@ -190,16 +224,16 @@ function CompanyComparison({ companies, ads, isMobile }: { companies: Company[];
                 <div style={{ flex: 1, background: "var(--surface)", borderRadius: 6, height: 18, position: "relative" }}>
                   <div
                     style={{
-                      width: `${(c.spend / max) * 100}%`,
-                      background: "var(--blue-500)",
+                      width: `${(c.value / max) * 100}%`,
+                      background: color,
                       height: "100%",
                       borderRadius: 6,
-                      minWidth: c.spend > 0 ? 3 : 0,
+                      minWidth: c.value > 0 ? 3 : 0,
                     }}
                   />
                 </div>
                 <div style={{ width: 90, textAlign: "right", fontSize: 12.5, fontFamily: "var(--font-mono)", color: "var(--ink)", flexShrink: 0 }}>
-                  {fmtBRL(c.spend)}
+                  {format(c.value)}
                 </div>
               </div>
             )

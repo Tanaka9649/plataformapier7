@@ -1,13 +1,24 @@
 import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import AppShell from "../components/AppShell";
+import StatCard from "../components/StatCard";
 import LeadDetailPanel from "../components/LeadDetailPanel";
 import { client, Company, CrmPipeline, CrmStage, CrmLead, getOrCreateAppUserId, getCurrentUserRole, logAudit } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
+import { Search, Upload, Phone, MessageCircle, Plus } from "lucide-react";
 
 // xlsx sozinho é ~7MB de fonte — só carrega quando a pessoa realmente abre "Importar leads",
 // em vez de entrar no bundle inicial do CRM pra todo mundo.
 const ImportLeadsModal = lazy(() => import("../components/ImportLeadsModal"));
+
+const fmtBRL = (n: number) => "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+const fmtInt = (n: number) => Math.round(n).toLocaleString("pt-BR");
+const initials = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 type Tag = { id: string; name: string; color: string };
 
@@ -19,6 +30,7 @@ export default function CrmPage() {
   const [leads, setLeads] = useState<CrmLead[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [dragLeadId, setDragLeadId] = useState<string | null>(null);
+  const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const [addingLeadStage, setAddingLeadStage] = useState<string | null>(null);
   const [newLeadName, setNewLeadName] = useState("");
   const [addingStage, setAddingStage] = useState(false);
@@ -55,6 +67,11 @@ export default function CrmPage() {
   const allTagsFlat = Array.from(
     new Map(Object.values(leadTags).flat().map((t) => [t.id, t])).values()
   );
+
+  const openPotentialValue = filteredLeads
+    .filter((l) => l.closed_value == null)
+    .reduce((s, l) => s + Number(l.potential_value ?? 0), 0);
+  const closedValue = filteredLeads.reduce((s, l) => s + Number(l.closed_value ?? 0), 0);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -199,35 +216,54 @@ export default function CrmPage() {
         </div>
       )}
 
+      <div style={{ padding: isMobile ? "16px 16px 0" : "20px 32px 0" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(3, 1fr)" : "repeat(3, minmax(160px, 220px))", gap: 12, marginBottom: 4 }}>
+          <StatCard label="Leads no funil" value={fmtInt(filteredLeads.length)} />
+          <StatCard
+            label="Valor potencial em aberto"
+            value={fmtBRL(openPotentialValue)}
+            hint={openPotentialValue === 0 ? "sem valor potencial lançado" : undefined}
+          />
+          <StatCard
+            label="Valor fechado"
+            value={fmtBRL(closedValue)}
+            hint={closedValue === 0 ? "nenhum negócio fechado ainda" : undefined}
+          />
+        </div>
+      </div>
+
       <div
         style={{
           display: "flex",
           flexWrap: "wrap",
-          gap: 8,
+          gap: 10,
           alignItems: "center",
           justifyContent: "space-between",
-          padding: isMobile ? "12px 16px 0" : "12px 32px 0",
+          padding: isMobile ? "16px 16px 0" : "20px 32px 0",
         }}
       >
-        <div style={{ display: "flex", gap: 8, flex: 1, minWidth: 200, maxWidth: 420 }}>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome, telefone ou cidade…"
-            style={{
-              flex: 1,
-              border: "1px solid var(--border-strong)",
-              borderRadius: 8,
-              padding: "7px 12px",
-              fontSize: 13,
-              background: "var(--surface)",
-            }}
-          />
+        <div style={{ display: "flex", gap: 8, flex: 1, minWidth: 200, maxWidth: 460 }}>
+          <div style={{ position: "relative", flex: 1 }}>
+            <Search size={14} strokeWidth={2.2} style={{ position: "absolute", left: 11, top: "50%", transform: "translateY(-50%)", color: "var(--ink-faint)", pointerEvents: "none" }} />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome, telefone ou cidade…"
+              style={{
+                width: "100%",
+                border: "1px solid var(--border-strong)",
+                borderRadius: 8,
+                padding: "8px 12px 8px 32px",
+                fontSize: 13,
+                background: "var(--bg)",
+              }}
+            />
+          </div>
           {allTagsFlat.length > 0 && (
             <select
               value={tagFilter}
               onChange={(e) => setTagFilter(e.target.value)}
-              style={{ border: "1px solid var(--border-strong)", borderRadius: 8, padding: "0 8px", fontSize: 12.5, background: "var(--surface)" }}
+              style={{ border: "1px solid var(--border-strong)", borderRadius: 8, padding: "0 8px", fontSize: 12.5, background: "var(--bg)", color: "var(--ink-soft)" }}
             >
               <option value="">Todas as etiquetas</option>
               {allTagsFlat.map((t) => (
@@ -242,15 +278,19 @@ export default function CrmPage() {
           onClick={() => setShowImport(true)}
           disabled={!pipeline}
           style={{
-            background: "var(--surface)",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: "var(--bg)",
             border: "1px solid var(--border)",
             borderRadius: 8,
-            padding: "7px 14px",
+            padding: "8px 14px",
             fontSize: 12.5,
             fontWeight: 600,
             color: "var(--ink-soft)",
           }}
         >
+          <Upload size={14} strokeWidth={2.2} />
           Importar leads
         </button>
       </div>
@@ -282,39 +322,68 @@ export default function CrmPage() {
         <div style={{ display: "flex", gap: 16, height: "100%", minWidth: isMobile ? "auto" : "min-content" }}>
           {(isMobile ? stages.filter((s) => s.id === mobileStageId) : stages).map((stage) => {
             const stageLeads = filteredLeads.filter((l) => l.stage_id === stage.id);
+            const overWip = stage.wip_limit != null && stageLeads.length > stage.wip_limit;
+            const isDropTarget = dragOverStageId === stage.id;
             return (
               <div
                 key={stage.id}
-                onDragOver={(e) => e.preventDefault()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dragOverStageId !== stage.id) setDragOverStageId(stage.id);
+                }}
+                onDragLeave={() => setDragOverStageId((cur) => (cur === stage.id ? null : cur))}
                 onDrop={(e) => {
                   e.preventDefault();
                   if (dragLeadId) moveLead(dragLeadId, stage.id);
                   setDragLeadId(null);
+                  setDragOverStageId(null);
                 }}
                 style={{
-                  width: isMobile ? "100%" : 264,
+                  width: isMobile ? "100%" : 268,
                   flexShrink: 0,
                   background: "var(--surface)",
                   borderRadius: "var(--radius-md)",
+                  borderTop: `3px solid ${stage.color}`,
+                  boxShadow: isDropTarget ? `0 0 0 2px ${stage.color}` : "none",
+                  outline: isDropTarget ? `2px dashed ${stage.color}` : "2px dashed transparent",
+                  outlineOffset: -2,
                   padding: 12,
                   display: "flex",
                   flexDirection: "column",
+                  transition: "box-shadow var(--duration-fast) var(--ease), outline-color var(--duration-fast) var(--ease)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px 12px" }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: stage.color }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{stage.name}</span>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: stage.wip_limit != null && stageLeads.length > stage.wip_limit ? 700 : 400,
-                      color: stage.wip_limit != null && stageLeads.length > stage.wip_limit ? "var(--red-500)" : "var(--ink-faint)",
-                      marginLeft: "auto",
-                    }}
-                  >
-                    {stageLeads.length}
-                    {stage.wip_limit != null ? `/${stage.wip_limit}` : ""}
-                  </span>
+                <div style={{ padding: "6px 6px 10px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--ink)" }}>{stage.name}</span>
+                    <span
+                      style={{
+                        fontSize: 11.5,
+                        fontWeight: 700,
+                        padding: "1px 7px",
+                        borderRadius: 20,
+                        marginLeft: "auto",
+                        background: overWip ? "var(--red-50)" : "var(--surface-hover)",
+                        color: overWip ? "var(--red-500)" : "var(--ink-faint)",
+                      }}
+                    >
+                      {stageLeads.length}
+                      {stage.wip_limit != null ? `/${stage.wip_limit}` : ""}
+                    </span>
+                  </div>
+                  {stage.wip_limit != null && (
+                    <div style={{ background: "var(--border)", borderRadius: 20, height: 3, marginTop: 8, overflow: "hidden" }}>
+                      <div
+                        style={{
+                          width: `${Math.min((stageLeads.length / stage.wip_limit) * 100, 100)}%`,
+                          height: "100%",
+                          borderRadius: 20,
+                          background: overWip ? "var(--red-500)" : stage.color,
+                          transition: "width var(--duration-base) var(--ease)",
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 40 }}>
@@ -324,29 +393,75 @@ export default function CrmPage() {
                       className="card-hover"
                       draggable={!isMobile}
                       onDragStart={() => setDragLeadId(lead.id)}
-                      onDragEnd={() => setDragLeadId(null)}
+                      onDragEnd={() => {
+                        setDragLeadId(null);
+                        setDragOverStageId(null);
+                      }}
                       onClick={() => setSelectedLead(lead)}
                       style={{
                         background: "var(--bg)",
                         border: "1px solid var(--border)",
+                        borderLeft: `3px solid ${stage.color}`,
                         borderRadius: 10,
-                        padding: "12px 14px",
+                        padding: "11px 13px",
                         boxShadow: "var(--shadow-xs)",
                         cursor: "grab",
-                        opacity: dragLeadId === lead.id ? 0.5 : 1,
+                        opacity: dragLeadId === lead.id ? 0.4 : 1,
+                        transform: dragLeadId === lead.id ? "scale(0.97)" : "scale(1)",
+                        transition: "opacity var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease)",
                       }}
                     >
-                      <div style={{ fontSize: 13.5, fontWeight: 600, marginBottom: 4 }}>{lead.name}</div>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
+                        <span
+                          style={{
+                            flexShrink: 0,
+                            width: 24,
+                            height: 24,
+                            borderRadius: "50%",
+                            background: stage.color + "1A",
+                            color: stage.color,
+                            fontSize: 10.5,
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            marginTop: 1,
+                          }}
+                        >
+                          {initials(lead.name)}
+                        </span>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 13.5, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {lead.name}
+                          </div>
+                          {lead.city && (
+                            <div style={{ fontSize: 11.5, color: "var(--ink-faint)", marginTop: 1 }}>{lead.city}</div>
+                          )}
+                        </div>
+                      </div>
+
                       {lead.phone && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>{lead.phone}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
+                          <div style={{ fontSize: 12, color: "var(--ink-faint)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {lead.phone}
+                          </div>
                           <a
                             href={`tel:${lead.phone.replace(/\D/g, "")}`}
                             onClick={(e) => e.stopPropagation()}
                             title="Ligar"
-                            style={{ fontSize: 12, textDecoration: "none" }}
+                            style={{
+                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: 22,
+                              height: 22,
+                              borderRadius: "50%",
+                              background: "var(--surface)",
+                              color: "var(--ink-soft)",
+                            }}
                           >
-                            📞
+                            <Phone size={11} strokeWidth={2.2} />
                           </a>
                           <a
                             href={`https://wa.me/55${lead.phone.replace(/\D/g, "")}`}
@@ -354,17 +469,24 @@ export default function CrmPage() {
                             rel="noreferrer"
                             onClick={(e) => e.stopPropagation()}
                             title="WhatsApp"
-                            style={{ fontSize: 12, textDecoration: "none" }}
+                            style={{
+                              flexShrink: 0,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              width: 22,
+                              height: 22,
+                              borderRadius: "50%",
+                              background: "var(--green-50)",
+                              color: "var(--green-500)",
+                            }}
                           >
-                            💬
+                            <MessageCircle size={11} strokeWidth={2.2} />
                           </a>
                         </div>
                       )}
-                      {lead.city && (
-                        <div style={{ fontSize: 12, color: "var(--ink-faint)" }}>{lead.city}</div>
-                      )}
                       {leadTags[lead.id]?.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 6 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
                           {leadTags[lead.id].map((t) => (
                             <span
                               key={t.id}
@@ -383,7 +505,7 @@ export default function CrmPage() {
                         </div>
                       )}
                       {lead.score != null && (
-                        <div style={{ fontSize: 11.5, color: "var(--amber-500)", marginTop: 6 }}>
+                        <div style={{ fontSize: 11.5, color: "var(--amber-500)", marginTop: 8, letterSpacing: -0.5 }}>
                           {"★".repeat(lead.score)}
                           {"☆".repeat(10 - lead.score)}
                         </div>
@@ -420,7 +542,16 @@ export default function CrmPage() {
                   ))}
 
                   {stageLeads.length === 0 && (
-                    <div style={{ fontSize: 12, color: "var(--ink-faint)", padding: "8px 6px" }}>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--ink-faint)",
+                        padding: "16px 10px",
+                        textAlign: "center",
+                        border: "1px dashed var(--border-strong)",
+                        borderRadius: 8,
+                      }}
+                    >
                       Sem leads nesta etapa.
                     </div>
                   )}
@@ -439,6 +570,7 @@ export default function CrmPage() {
                         borderRadius: 8,
                         padding: "8px 10px",
                         fontSize: 13,
+                        background: "var(--bg)",
                       }}
                     />
                     <div style={{ display: "flex", gap: 6 }}>
@@ -461,15 +593,21 @@ export default function CrmPage() {
                     onClick={() => setAddingLeadStage(stage.id)}
                     style={{
                       marginTop: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 5,
                       background: "none",
                       border: "none",
                       color: "var(--ink-faint)",
                       fontSize: 12.5,
+                      fontWeight: 500,
                       textAlign: "left",
-                      padding: "6px",
+                      padding: "7px 6px",
+                      borderRadius: 6,
                     }}
                   >
-                    + Novo lead
+                    <Plus size={13} strokeWidth={2.4} />
+                    Novo lead
                   </button>
                 )}
               </div>
@@ -486,7 +624,7 @@ export default function CrmPage() {
                     onChange={(e) => setNewStageName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && createStage()}
                     placeholder="Nome da coluna"
-                    style={{ border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}
+                    style={{ border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 10px", fontSize: 13, background: "var(--bg)" }}
                   />
                   <div style={{ display: "flex", gap: 6 }}>
                     <button onClick={createStage} style={{ background: "var(--blue-500)", color: "#fff", border: "none", borderRadius: 8, padding: "6px 10px", fontSize: 12.5, fontWeight: 600 }}>
@@ -500,7 +638,12 @@ export default function CrmPage() {
               ) : (
                 <button
                   onClick={() => setAddingStage(true)}
+                  className="card-hover"
                   style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
                     border: "1px dashed var(--border-strong)",
                     borderRadius: "var(--radius-md)",
                     padding: "14px",
@@ -508,9 +651,11 @@ export default function CrmPage() {
                     background: "none",
                     color: "var(--ink-faint)",
                     fontSize: 13,
+                    fontWeight: 500,
                   }}
                 >
-                  + Nova coluna
+                  <Plus size={14} strokeWidth={2.4} />
+                  Nova coluna
                 </button>
               )}
             </div>

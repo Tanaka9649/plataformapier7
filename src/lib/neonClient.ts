@@ -115,6 +115,15 @@ export type ManualRevenue = {
   created_at: string;
 };
 
+export type ManualLead = {
+  id: string;
+  company_id: string;
+  quantity: number;
+  description: string | null;
+  lead_date: string;
+  created_at: string;
+};
+
 export type Integration = {
   id: string;
   company_id: string;
