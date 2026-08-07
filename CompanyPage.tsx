@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import AppShell from "../components/AppShell";
 import StatCard from "../components/StatCard";
 import { ArrowUpRight } from "lucide-react";
-import { client, Company, AdMetricDaily, SocialMetricDaily, ManualRevenue, logAudit } from "../lib/neonClient";
+import { client, Company, AdMetricDaily, SocialMetricDaily, ManualRevenue, ManualLead, logAudit } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
 
 const fmtBRL = (n: number) => "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
@@ -38,12 +38,18 @@ export default function CompanyPage() {
   const [ads, setAds] = useState<AdMetricDaily[] | null>(null);
   const [social, setSocial] = useState<SocialMetricDaily[] | null>(null);
   const [revenue, setRevenue] = useState<ManualRevenue[] | null>(null);
+  const [leadsManual, setLeadsManual] = useState<ManualLead[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revError, setRevError] = useState<string | null>(null);
   const [newRevAmount, setNewRevAmount] = useState("");
   const [newRevDate, setNewRevDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [newRevDesc, setNewRevDesc] = useState("");
   const [savingRev, setSavingRev] = useState(false);
+  const [leadError, setLeadError] = useState<string | null>(null);
+  const [newLeadQty, setNewLeadQty] = useState("");
+  const [newLeadDate, setNewLeadDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [newLeadDesc, setNewLeadDesc] = useState("");
+  const [savingLead, setSavingLead] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -57,17 +63,20 @@ export default function CompanyPage() {
       if (!c) return setError("Empresa não encontrada.");
       setCompany(c);
 
-      const [a, s, r] = await Promise.all([
+      const [a, s, r, ml] = await Promise.all([
         client.from("ad_metrics_daily").select("*").eq("company_id", c.id).order("date", { ascending: true }),
         client.from("social_metrics_daily").select("*").eq("company_id", c.id).order("date", { ascending: false }),
         client.from("manual_revenue").select("*").eq("company_id", c.id).order("revenue_date", { ascending: false }),
+        client.from("manual_leads").select("*").eq("company_id", c.id).order("lead_date", { ascending: false }),
       ]);
       if (a.error) return setError(a.error.message);
       if (s.error) return setError(s.error.message);
       if (r.error) return setError(r.error.message);
+      if (ml.error) return setError(ml.error.message);
       setAds(a.data as AdMetricDaily[]);
       setSocial(s.data as SocialMetricDaily[]);
       setRevenue((r.data as ManualRevenue[]) ?? []);
+      setLeadsManual((ml.data as ManualLead[]) ?? []);
       setSocialNetwork("all");
     })();
   }, [slug]);
@@ -146,6 +155,58 @@ export default function CompanyPage() {
   const prevRoas = prevSpend > 0 ? prevRevenueTotal / prevSpend : null;
   const revenueDelta = pctDelta(revenueTotal, prevRevenueTotal);
   const roasDelta = roas !== null && prevRoas !== null && prevRoas > 0 ? ((roas - prevRoas) / prevRoas) * 100 : null;
+
+  const leadsInPeriod = (leadsManual ?? []).filter((l) => new Date(l.lead_date) >= cutoff);
+  const leadsTotal = leadsInPeriod.reduce((s, l) => s + Number(l.quantity), 0);
+  const cpl = leadsTotal > 0 ? spend / leadsTotal : null;
+
+  const leadsInPrevPeriod = (leadsManual ?? []).filter((l) => {
+    const d = new Date(l.lead_date);
+    return d >= prevCutoffStart && d < cutoff;
+  });
+  const prevLeadsTotal = leadsInPrevPeriod.reduce((s, l) => s + Number(l.quantity), 0);
+  const prevCpl = prevLeadsTotal > 0 ? prevSpend / prevLeadsTotal : null;
+  const leadsDelta = pctDelta(leadsTotal, prevLeadsTotal);
+  const cplDelta = cpl !== null && prevCpl !== null && prevCpl > 0 ? ((cpl - prevCpl) / prevCpl) * 100 : null;
+
+  async function addLead() {
+    if (!company) return;
+    const quantity = parseInt(newLeadQty.trim(), 10);
+    if (!newLeadQty.trim() || isNaN(quantity) || quantity <= 0) {
+      setLeadError("Informe uma quantidade válida maior que zero.");
+      return;
+    }
+    setLeadError(null);
+    setSavingLead(true);
+    const { data, error: insErr } = await client
+      .from("manual_leads")
+      .insert({
+        company_id: company.id,
+        quantity,
+        lead_date: newLeadDate,
+        description: newLeadDesc.trim() || null,
+      })
+      .select();
+    setSavingLead(false);
+    if (insErr) return setLeadError(insErr.message);
+    const created = (data as ManualLead[])?.[0];
+    if (created) {
+      setLeadsManual((prev) => [created, ...(prev ?? [])].sort((a, b) => (a.lead_date < b.lead_date ? 1 : -1)));
+      await logAudit("manual_leads", created.id, "create", null, created);
+    }
+    setNewLeadQty("");
+    setNewLeadDesc("");
+    setNewLeadDate(new Date().toISOString().slice(0, 10));
+  }
+
+  async function deleteLead(entry: ManualLead) {
+    const ok = window.confirm(`Excluir o lançamento de ${entry.quantity} lead${entry.quantity === 1 ? "" : "s"} em ${entry.lead_date.slice(0, 10)}?`);
+    if (!ok) return;
+    const { error: delErr } = await client.from("manual_leads").delete().eq("id", entry.id);
+    if (delErr) return setLeadError(delErr.message);
+    setLeadsManual((prev) => (prev ?? []).filter((l) => l.id !== entry.id));
+    await logAudit("manual_leads", entry.id, "delete", entry, null);
+  }
 
   async function addRevenue() {
     if (!company) return;
@@ -241,8 +302,8 @@ export default function CompanyPage() {
               ))}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 32 }}>
-              {ads === null || revenue === null ? (
-                <PageSkeletonCards count={7} height={78} />
+              {ads === null || revenue === null || leadsManual === null ? (
+                <PageSkeletonCards count={9} height={78} />
               ) : (
                 <>
                   <StatCard label="Investimento" value={fmtBRL(spend)} delta={spendDelta} />
@@ -250,6 +311,18 @@ export default function CompanyPage() {
                   <StatCard label="Cliques" value={fmtInt(clicks)} delta={clicksDelta} />
                   <StatCard label="CPC médio" value={fmtBRL(cpc)} delta={cpcDelta} />
                   <StatCard label="CTR" value={`${ctr.toFixed(2)}%`} delta={ctrDelta} />
+                  <StatCard
+                    label="Leads (lançados manualmente)"
+                    value={fmtInt(leadsTotal)}
+                    delta={leadsDelta}
+                    hint={leadsTotal === 0 ? "nenhum lançamento neste período" : undefined}
+                  />
+                  <StatCard
+                    label="CPL (custo por lead)"
+                    value={cpl !== null ? fmtBRL(cpl) : "—"}
+                    delta={cplDelta}
+                    hint={cpl === null ? "sem leads lançados no período" : undefined}
+                  />
                   <StatCard
                     label="Receita (lançada manualmente)"
                     value={fmtBRL(revenueTotal)}
@@ -275,6 +348,111 @@ export default function CompanyPage() {
 
             {ads !== null && adsInPeriod.length === 0 && (
               <EmptyState text="Sem dados de tráfego pago nesse período. Verifique se a conta está conectada no Windsor." />
+            )}
+
+            <h3 style={{ fontSize: 14, fontWeight: 700, margin: "32px 0 4px" }}>Leads manual</h3>
+            <p style={{ fontSize: 12, color: "var(--ink-faint)", margin: "0 0 14px" }}>
+              Lance aqui a quantidade de leads recebidos por essa empresa — usada pra calcular o CPL acima e pra somar no
+              resumo geral da página inicial. O Meta Ads não devolve conversão real via Windsor, então esses números são
+              digitados por vocês.
+            </p>
+
+            {leadError && (
+              <div style={{ background: "var(--red-50)", color: "var(--red-500)", padding: 10, borderRadius: 8, fontSize: 12.5, marginBottom: 12 }}>
+                {leadError}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20, alignItems: "flex-end" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, color: "var(--ink-faint)" }}>Data</label>
+                <input
+                  type="date"
+                  value={newLeadDate}
+                  onChange={(e) => setNewLeadDate(e.target.value)}
+                  style={{ border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <label style={{ fontSize: 11, color: "var(--ink-faint)" }}>Quantidade</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="12"
+                  value={newLeadQty}
+                  onChange={(e) => setNewLeadQty(e.target.value.replace(/\D/g, ""))}
+                  style={{ width: 90, border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}
+                />
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: "1 1 180px" }}>
+                <label style={{ fontSize: 11, color: "var(--ink-faint)" }}>Descrição (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="ex: leads da campanha de aniversário"
+                  value={newLeadDesc}
+                  onChange={(e) => setNewLeadDesc(e.target.value)}
+                  style={{ border: "1px solid var(--border-strong)", borderRadius: 8, padding: "8px 10px", fontSize: 13 }}
+                />
+              </div>
+              <button
+                onClick={addLead}
+                disabled={savingLead}
+                style={{
+                  background: "var(--blue-500)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "9px 18px",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  opacity: savingLead ? 0.6 : 1,
+                }}
+              >
+                {savingLead ? "Salvando…" : "+ Lançar"}
+              </button>
+            </div>
+
+            {leadsManual !== null && leadsManual.length === 0 && (
+              <EmptyState text="Nenhum lançamento de leads ainda. Use o formulário acima para registrar o primeiro." />
+            )}
+
+            {leadsManual !== null && leadsManual.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+                {leadsManual.map((l) => (
+                  <div
+                    key={l.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      background: "var(--bg)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                      padding: "9px 12px",
+                    }}
+                  >
+                    <span style={{ fontSize: 12, color: "var(--ink-faint)", fontFamily: "var(--font-mono)", flexShrink: 0 }}>
+                      {l.lead_date.slice(0, 10).split("-").reverse().join("/")}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, fontFamily: "var(--font-mono)", flexShrink: 0 }}>
+                      {l.quantity} lead{l.quantity === 1 ? "" : "s"}
+                    </span>
+                    {l.description && (
+                      <span style={{ fontSize: 12.5, color: "var(--ink-soft)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {l.description}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => deleteLead(l)}
+                      title="Excluir lançamento"
+                      aria-label={`Excluir lançamento de ${l.quantity} leads em ${l.lead_date.slice(0, 10)}`}
+                      style={{ marginLeft: "auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6, width: 26, height: 26, fontSize: 12, color: "var(--red-500)", flexShrink: 0 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
 
             <h3 style={{ fontSize: 14, fontWeight: 700, margin: "32px 0 4px" }}>Receita manual</h3>
