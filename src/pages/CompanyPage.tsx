@@ -8,6 +8,7 @@ import { useIsMobile } from "../lib/useIsMobile";
 
 const fmtBRL = (n: number) => "R$ " + n.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 const fmtInt = (n: number) => Math.round(n).toLocaleString("pt-BR");
+const fmtDate = (iso: string) => iso.slice(0, 10).split("-").reverse().join("/");
 const NETWORK_LABEL: Record<string, string> = {
   instagram: "Instagram",
   facebook: "Facebook",
@@ -15,6 +16,15 @@ const NETWORK_LABEL: Record<string, string> = {
   youtube: "YouTube",
   google_my_business: "Google Meu Negócio",
 };
+const NETWORK_COLOR: Record<string, string> = {
+  instagram: "var(--violet-500)",
+  facebook: "var(--blue-500)",
+  tiktok: "var(--ink)",
+  youtube: "var(--red-500)",
+  google_my_business: "var(--green-500)",
+};
+const SOCIAL_PERIODS = [7, 14, 30, 0] as const;
+type SocialPeriod = (typeof SOCIAL_PERIODS)[number];
 
 export default function CompanyPage() {
   const { slug } = useParams();
@@ -23,6 +33,7 @@ export default function CompanyPage() {
   const [tab, setTab] = useState<"ads" | "social">("ads");
   const [period, setPeriod] = useState<7 | 14 | 30>(30);
   const [socialNetwork, setSocialNetwork] = useState<string>("all");
+  const [socialPeriod, setSocialPeriod] = useState<SocialPeriod>(30);
   const [company, setCompany] = useState<Company | null>(null);
   const [ads, setAds] = useState<AdMetricDaily[] | null>(null);
   const [social, setSocial] = useState<SocialMetricDaily[] | null>(null);
@@ -90,6 +101,38 @@ export default function CompanyPage() {
   const clicksDelta = pctDelta(clicks, prevClicks);
   const cpcDelta = pctDelta(cpc, prevCpc);
   const ctrDelta = pctDelta(ctr, prevCtr);
+
+  const socialNetworks = Array.from(new Set((social ?? []).map((s) => s.network)));
+  const socialCutoff = socialPeriod === 0 ? null : (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - socialPeriod);
+    return d;
+  })();
+  function summarizeNetwork(network: string) {
+    const rows = (social ?? []).filter((s) => s.network === network);
+    const sortedAsc = [...rows].sort((a, b) => (a.date < b.date ? -1 : 1));
+    const withFollowers = [...sortedAsc].reverse().find((r) => r.followers != null);
+    const inPeriod = sortedAsc.filter((r) => socialCutoff === null || new Date(r.date) >= socialCutoff);
+    const totalLikes = inPeriod.reduce((s, r) => s + (r.likes ?? 0), 0);
+    const totalComments = inPeriod.reduce((s, r) => s + (r.comments ?? 0), 0);
+    const activeDays = inPeriod.filter((r) => (r.likes ?? 0) > 0 || (r.comments ?? 0) > 0 || (r.posts ?? 0) > 0);
+    const avgEngagement = activeDays.length > 0 ? (totalLikes + totalComments) / activeDays.length : 0;
+    const lastUpdated = sortedAsc.length > 0 ? sortedAsc[sortedAsc.length - 1].date : null;
+    const recent = [...inPeriod].reverse().slice(0, 8);
+    return {
+      network,
+      followers: withFollowers?.followers ?? null,
+      followersAsOf: withFollowers?.date ?? null,
+      totalLikes,
+      totalComments,
+      postCount: activeDays.length,
+      avgEngagement,
+      lastUpdated,
+      chartData: inPeriod.map((r) => ({ label: r.date.slice(5), value: (r.likes ?? 0) + (r.comments ?? 0) })),
+      recent,
+    };
+  }
+  const visibleSocialNetworks = socialNetwork === "all" ? socialNetworks : socialNetworks.filter((n) => n === socialNetwork);
 
   const revenueInPeriod = (revenue ?? []).filter((r) => new Date(r.revenue_date) >= cutoff);
   const revenueTotal = revenueInPeriod.reduce((s, r) => s + Number(r.amount), 0);
@@ -342,65 +385,140 @@ export default function CompanyPage() {
 
         {tab === "social" && (
           <section>
+            {social === null && (
+              <div style={{ display: "grid", gap: 14 }}>
+                <PageSkeletonCards count={2} height={180} />
+              </div>
+            )}
+
             {social !== null && social.length === 0 && (
               <EmptyState text="Nenhuma rede social conectada para esta empresa ainda." />
             )}
+
             {social !== null && social.length > 0 && (
               <>
-                <div style={{ fontSize: 11.5, color: "var(--ink-faint)", marginBottom: 16 }}>
-                  A comparação com o período anterior ainda não está disponível aqui — a fonte de dados guarda só o snapshot mais
-                  recente de cada rede, sem histórico diário. Assim que houver histórico, a comparação entra igual à de Tráfego pago.
-                </div>
-                <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-                  <PeriodChip active={socialNetwork === "all"} onClick={() => setSocialNetwork("all")}>
-                    Todas
-                  </PeriodChip>
-                  {Array.from(new Set(social.map((s) => s.network))).map((net) => (
-                    <PeriodChip key={net} active={socialNetwork === net} onClick={() => setSocialNetwork(net)}>
-                      {NETWORK_LABEL[net] ?? net}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <PeriodChip active={socialNetwork === "all"} onClick={() => setSocialNetwork("all")}>
+                      Todas as redes
                     </PeriodChip>
-                  ))}
+                    {socialNetworks.map((net) => (
+                      <PeriodChip key={net} active={socialNetwork === net} onClick={() => setSocialNetwork(net)}>
+                        {NETWORK_LABEL[net] ?? net}
+                      </PeriodChip>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {SOCIAL_PERIODS.map((p) => (
+                      <PeriodChip key={p} active={socialPeriod === p} onClick={() => setSocialPeriod(p)}>
+                        {p === 0 ? "Tudo" : `${p}d`}
+                      </PeriodChip>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+                  {visibleSocialNetworks.map((net) => {
+                    const s = summarizeNetwork(net);
+                    const color = NETWORK_COLOR[net] ?? "var(--blue-500)";
+                    return (
+                      <div key={net}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                          <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, flexShrink: 0 }} />
+                          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{NETWORK_LABEL[net] ?? net}</h3>
+                          <span style={{ fontSize: 11.5, color: "var(--ink-faint)" }}>
+                            {s.lastUpdated ? `atualizado em ${fmtDate(s.lastUpdated)}` : "sem dados"}
+                          </span>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 16 }}>
+                          <StatCard
+                            label="Seguidores"
+                            value={s.followers != null ? fmtInt(s.followers) : "—"}
+                            hint={s.followers != null ? `snapshot de ${fmtDate(s.followersAsOf!)}` : "sem snapshot disponível"}
+                          />
+                          <StatCard
+                            label={`Curtidas (${socialPeriod === 0 ? "tudo" : `${socialPeriod}d`})`}
+                            value={fmtInt(s.totalLikes)}
+                          />
+                          <StatCard
+                            label={`Comentários (${socialPeriod === 0 ? "tudo" : `${socialPeriod}d`})`}
+                            value={fmtInt(s.totalComments)}
+                          />
+                          <StatCard
+                            label="Engajamento médio/post"
+                            value={s.postCount > 0 ? fmtInt(s.avgEngagement) : "—"}
+                            hint={s.postCount > 0 ? `${s.postCount} publicação${s.postCount === 1 ? "" : "ões"} no período` : "sem publicações no período"}
+                          />
+                        </div>
+
+                        {s.chartData.length > 0 ? (
+                          <>
+                            <div style={{ fontSize: 11.5, color: "var(--ink-faint)", marginBottom: 8 }}>
+                              Curtidas + comentários por dia com publicação
+                            </div>
+                            <MiniBarChart
+                              data={s.chartData}
+                              color={color}
+                              formatTooltip={(v) => `${fmtInt(v)} interações`}
+                            />
+                          </>
+                        ) : (
+                          <EmptyState text="Sem publicações registradas nesse período." />
+                        )}
+
+                        {s.recent.length > 0 && (
+                          <div style={{ marginTop: 16 }}>
+                            <div style={{ fontSize: 11.5, color: "var(--ink-faint)", marginBottom: 8 }}>
+                              Atividade recente
+                            </div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                              {s.recent.map((r) => (
+                                <div
+                                  key={r.id}
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 14,
+                                    background: "var(--bg)",
+                                    border: "1px solid var(--border)",
+                                    borderRadius: 8,
+                                    padding: "9px 12px",
+                                    fontSize: 12.5,
+                                  }}
+                                >
+                                  <span style={{ color: "var(--ink-faint)", fontFamily: "var(--font-mono)", flexShrink: 0, width: 68 }}>
+                                    {fmtDate(r.date)}
+                                  </span>
+                                  <span style={{ color: "var(--ink-soft)" }}>
+                                    {fmtInt(r.likes ?? 0)} curtidas · {fmtInt(r.comments ?? 0)} comentários
+                                  </span>
+                                  {r.followers != null && (
+                                    <span style={{ marginLeft: "auto", color: "var(--ink-faint)", fontFamily: "var(--font-mono)" }}>
+                                      {fmtInt(r.followers)} seguidores
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ fontSize: 11.5, color: "var(--ink-faint)", marginTop: 24 }}>
+                  Seguidores mostram o snapshot mais recente da conta — a fonte de dados não guarda histórico diário de
+                  seguidores. Curtidas e comentários são somados por dia com pelo menos uma publicação; dias sem post não
+                  aparecem no gráfico.
                 </div>
               </>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-              {social?.filter((s) => socialNetwork === "all" || s.network === socialNetwork).map((s) => (
-                <div
-                  key={s.id}
-                  style={{
-                    background: "var(--bg)",
-                    border: "1px solid var(--border)",
-                    borderRadius: "var(--radius-md)",
-                    padding: 20,
-                    boxShadow: "var(--shadow-sm)",
-                  }}
-                >
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--blue-600)", marginBottom: 10 }}>
-                    {NETWORK_LABEL[s.network] ?? s.network}
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {s.followers != null && <Row label="Seguidores" value={fmtInt(s.followers)} />}
-                    {s.views != null && <Row label="Views" value={fmtInt(s.views)} />}
-                    {s.likes != null && <Row label="Curtidas" value={fmtInt(s.likes)} />}
-                    {s.comments != null && <Row label="Comentários" value={fmtInt(s.comments)} />}
-                    {s.posts != null && <Row label="Publicações" value={fmtInt(s.posts)} />}
-                  </div>
-                </div>
-              ))}
-            </div>
           </section>
         )}
       </main>
     </AppShell>
-  );
-}
-
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-      <span style={{ color: "var(--ink-faint)" }}>{label}</span>
-      <span style={{ fontWeight: 600, fontFamily: "var(--font-mono)" }}>{value}</span>
-    </div>
   );
 }
 
@@ -443,7 +561,15 @@ function PeriodChip({ active, onClick, children }: { active: boolean; onClick: (
   );
 }
 
-function MiniBarChart({ data }: { data: { label: string; value: number }[] }) {
+function MiniBarChart({
+  data,
+  color = "var(--blue-500)",
+  formatTooltip = (v: number) => `R$ ${v.toFixed(2)}`,
+}: {
+  data: { label: string; value: number }[];
+  color?: string;
+  formatTooltip?: (value: number) => string;
+}) {
   if (data.length === 0) return null;
   const max = Math.max(...data.map((d) => d.value), 1);
   return (
@@ -460,12 +586,12 @@ function MiniBarChart({ data }: { data: { label: string; value: number }[] }) {
       }}
     >
       {data.map((d, i) => (
-        <div key={i} title={`${d.label}: R$ ${d.value.toFixed(2)}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 8 }}>
+        <div key={i} title={`${d.label}: ${formatTooltip(d.value)}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 8 }}>
           <div
             style={{
               width: 8,
               height: Math.max((d.value / max) * 88, 2),
-              background: "var(--blue-500)",
+              background: color,
               borderRadius: 3,
             }}
           />

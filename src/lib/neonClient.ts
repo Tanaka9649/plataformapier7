@@ -153,11 +153,15 @@ export type SocialMetricDaily = {
   network: string;
   date: string;
   followers: number | null;
+  followers_delta: number | null;
   reach: number | null;
   views: number | null;
   likes: number | null;
   comments: number | null;
+  shares: number | null;
+  saves: number | null;
   posts: number | null;
+  source: string;
 };
 
 export type CrmPipeline = { id: string; company_id: string; name: string };
