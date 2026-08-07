@@ -113,10 +113,16 @@ export default function DashboardPage() {
             marginBottom: 32,
           }}
         >
-          <StatCard label="Investimento total (30d)" value={fmtBRL(totalSpend)} />
-          <StatCard label="Cliques totais" value={fmtInt(totalClicks)} />
-          <StatCard label="Leads via Ads" value={fmtInt(totalLeads)} hint="campo populado por integração automática" />
-          <StatCard label="Seguidores (soma das redes)" value={fmtInt(totalFollowers)} />
+          {ads === null && !error ? (
+            <SkeletonCards count={4} height={78} />
+          ) : (
+            <>
+              <StatCard label="Investimento total (30d)" value={fmtBRL(totalSpend)} />
+              <StatCard label="Cliques totais" value={fmtInt(totalClicks)} />
+              <StatCard label="Leads via Ads" value={fmtInt(totalLeads)} hint="campo populado por integração automática" />
+              <StatCard label="Seguidores (soma das redes)" value={fmtInt(totalFollowers)} />
+            </>
+          )}
         </div>
 
         {companies && companies.length > 0 && (
@@ -191,14 +197,14 @@ function CompanyComparison({ companies, ads, isMobile }: { companies: Company[];
   );
 }
 
-function SkeletonCards() {
+function SkeletonCards({ count = 3, height = 74 }: { count?: number; height?: number }) {
   return (
     <>
-      {[1, 2, 3].map((i) => (
+      {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
           style={{
-            height: 74,
+            height,
             borderRadius: "var(--radius-md)",
             background:
               "linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 37%, var(--surface) 63%)",
