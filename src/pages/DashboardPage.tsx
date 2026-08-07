@@ -43,15 +43,29 @@ export default function DashboardPage() {
   const totalFollowers = social?.reduce((sum, r) => sum + (r.followers ?? 0), 0) ?? 0;
 
   return (
-    <div>
-      <TopBar />
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "24px 16px 60px" : "40px 32px 80px" }}>
-        <h1 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, margin: "0 0 6px" }}>Empresas</h1>
-        <p style={{ color: "var(--ink-faint)", fontSize: 14, margin: "0 0 24px" }}>
-          Selecione uma empresa para ver tráfego pago, redes sociais ou abrir o CRM.
-        </p>
+    <div style={{ position: "relative" }}>
+      <div
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 340,
+          background: "var(--gradient-brand-radial)",
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <TopBar />
+        <main style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "24px 16px 60px" : "40px 32px 80px" }}>
+          <h1 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, margin: "0 0 6px" }}>Empresas</h1>
+          <p style={{ color: "var(--ink-faint)", fontSize: 14, margin: "0 0 24px" }}>
+            Selecione uma empresa para ver tráfego pago, redes sociais ou abrir o CRM.
+          </p>
 
-        {error && <ErrorBanner message={error} />}
+          {error && <ErrorBanner message={error} />}
 
         <div
           style={{
@@ -61,20 +75,19 @@ export default function DashboardPage() {
             marginBottom: 48,
           }}
         >
-          {companies?.map((c) => (
+          {companies?.map((c, i) => (
             <Link
               key={c.id}
               to={`/empresa/${c.slug}`}
+              className="card-hover fade-in-up"
               style={{
                 background: "var(--bg)",
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
                 padding: "20px",
-                boxShadow: "var(--shadow-sm)",
-                transition: "box-shadow .15s ease, transform .15s ease",
+                boxShadow: "var(--shadow-xs)",
+                animationDelay: `${Math.min(i, 8) * 35}ms`,
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "var(--shadow-md)")}
-              onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "var(--shadow-sm)")}
             >
               <div style={{ fontWeight: 600, fontSize: 15, color: "var(--ink)" }}>{c.name}</div>
               <div
@@ -131,7 +144,8 @@ export default function DashboardPage() {
             <CompanyComparison companies={companies} ads={adsLast30} isMobile={isMobile} />
           </>
         )}
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

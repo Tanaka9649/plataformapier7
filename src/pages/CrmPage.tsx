@@ -322,6 +322,7 @@ export default function CrmPage() {
                   {stageLeads.map((lead) => (
                     <div
                       key={lead.id}
+                      className="card-hover"
                       draggable={!isMobile}
                       onDragStart={() => setDragLeadId(lead.id)}
                       onDragEnd={() => setDragLeadId(null)}
@@ -331,7 +332,7 @@ export default function CrmPage() {
                         border: "1px solid var(--border)",
                         borderRadius: 10,
                         padding: "12px 14px",
-                        boxShadow: "var(--shadow-sm)",
+                        boxShadow: "var(--shadow-xs)",
                         cursor: "grab",
                         opacity: dragLeadId === lead.id ? 0.5 : 1,
                       }}

@@ -23,14 +23,27 @@
   --amber-500: #c98a1a;
   --amber-50: #fbf1de;
 
-  /* Sombra: extremamente suave, nunca pesada */
+  /* Sombra: escala completa, da borda quase invisível até o painel flutuante */
+  --shadow-xs: 0 1px 1px rgba(16, 26, 46, 0.03);
   --shadow-sm: 0 1px 2px rgba(16, 26, 46, 0.04);
   --shadow-md: 0 4px 16px rgba(16, 26, 46, 0.06);
   --shadow-lg: 0 12px 32px rgba(16, 26, 46, 0.08);
+  --shadow-xl: 0 24px 56px rgba(16, 26, 46, 0.12);
+  --shadow-glow: 0 8px 28px rgba(48, 104, 232, 0.16);
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 18px;
+
+  /* Movimento: uma curva e um ritmo únicos, usados em tudo — é isso que faz a
+     interface parecer coesa em vez de cada elemento reagir do seu jeito. */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 140ms;
+  --duration-base: 220ms;
+
+  /* Assinatura visual: o mesmo glow radial suave usado no login, reaproveitado
+     no topo de outras telas pra dar continuidade de marca pela plataforma. */
+  --gradient-brand-radial: radial-gradient(1200px 480px at 50% -12%, var(--blue-50), transparent 60%);
 
   --font-ui: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -63,6 +76,25 @@ textarea {
 
 button {
   cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease), opacity var(--duration-fast) var(--ease), background var(--duration-fast) var(--ease);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+button:disabled {
+  cursor: default;
+}
+
+input,
+select,
+textarea {
+  transition: border-color var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease);
+}
+
+a {
+  transition: color var(--duration-fast) var(--ease), opacity var(--duration-fast) var(--ease);
 }
 
 :focus-visible {
@@ -84,4 +116,32 @@ a {
 
 .mono {
   font-family: var(--font-mono);
+}
+
+/* Utilitário: eleva um card discretamente ao passar o mouse — usar junto do
+   style={{}} inline de sempre, não substitui o padrão, só adiciona a interação. */
+.card-hover {
+  transition: transform var(--duration-base) var(--ease), box-shadow var(--duration-base) var(--ease), border-color var(--duration-base) var(--ease);
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--border-strong);
+}
+
+/* Utilitário: entrada suave de baixo pra cima, pra listas que carregam dado
+   real (empresas, cards de estatística) — dá sensação de "populando", não
+   de conteúdo que simplesmente aparece estático. */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.fade-in-up {
+  animation: fadeInUp var(--duration-base) var(--ease) both;
 }

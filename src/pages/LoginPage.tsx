@@ -42,19 +42,19 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background:
-          "radial-gradient(1200px 500px at 50% -10%, var(--blue-50), var(--bg) 60%)",
+        background: "var(--gradient-brand-radial), var(--bg)",
         padding: 24,
       }}
     >
       <div
+        className="fade-in-up"
         style={{
           width: "100%",
           maxWidth: 380,
           background: "var(--bg)",
           border: "1px solid var(--border)",
           borderRadius: "var(--radius-lg)",
-          boxShadow: "var(--shadow-lg)",
+          boxShadow: "var(--shadow-xl)",
           padding: "40px 36px",
         }}
       >
@@ -143,7 +143,7 @@ export default function LoginPage() {
               fontSize: 14,
               fontWeight: 600,
               opacity: loading ? 0.7 : 1,
-              transition: "background .15s ease",
+              boxShadow: loading ? "none" : "var(--shadow-glow)",
             }}
           >
             {loading ? "Aguarde…" : mode === "entrar" ? "Entrar" : "Criar acesso e entrar"}

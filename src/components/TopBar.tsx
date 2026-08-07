@@ -24,6 +24,7 @@ export default function TopBar({
         gap: 10,
         padding: isMobile ? "12px 16px" : "18px 32px",
         borderBottom: "1px solid var(--border)",
+        boxShadow: "var(--shadow-xs)",
         background: "var(--bg)",
         position: "sticky",
         top: 0,
