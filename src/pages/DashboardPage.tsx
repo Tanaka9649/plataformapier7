@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import TopBar from "../components/TopBar";
+import AppShell from "../components/AppShell";
 import StatCard from "../components/StatCard";
 import { client, Company, AdMetricDaily, SocialMetricDaily } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -43,8 +43,7 @@ export default function DashboardPage() {
   const totalFollowers = social?.reduce((sum, r) => sum + (r.followers ?? 0), 0) ?? 0;
 
   return (
-    <div>
-      <TopBar />
+    <AppShell>
       <div
         style={{
           position: "relative",
@@ -145,7 +144,7 @@ export default function DashboardPage() {
           </>
         )}
       </main>
-    </div>
+    </AppShell>
   );
 }
 

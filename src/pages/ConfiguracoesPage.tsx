@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import TopBar from "../components/TopBar";
+import AppShell from "../components/AppShell";
 import { client, Company, CrmPipeline, CrmStage, CrmCustomField, AppUser, Integration, getOrCreateAppUserId } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
 
@@ -340,8 +340,7 @@ export default function ConfiguracoesPage() {
   }
 
   return (
-    <div>
-      <TopBar breadcrumb={[{ label: "Configurações" }]} />
+    <AppShell breadcrumb={[{ label: "Configurações" }]}>
       <main style={{ maxWidth: 1000, margin: "0 auto", padding: isMobile ? "24px 16px 60px" : "36px 32px 80px" }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, margin: "0 0 24px" }}>Configurações</h1>
 
@@ -742,7 +741,7 @@ export default function ConfiguracoesPage() {
           </section>
         )}
       </main>
-    </div>
+    </AppShell>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
-import TopBar from "../components/TopBar";
+import AppShell from "../components/AppShell";
 import LeadDetailPanel from "../components/LeadDetailPanel";
 import { client, Company, CrmPipeline, CrmStage, CrmLead, getOrCreateAppUserId, getCurrentUserRole, logAudit } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
@@ -181,19 +181,18 @@ export default function CrmPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      <TopBar
-        breadcrumb={
-          company
-            ? [
-                { label: "Empresas", to: "/" },
-                { label: company.name, to: `/empresa/${slug}` },
-                { label: "CRM" },
-              ]
-            : [{ label: "Empresas", to: "/" }]
-        }
-      />
-
+    <AppShell
+      breadcrumb={
+        company
+          ? [
+              { label: "Empresas", to: "/" },
+              { label: company.name, to: `/empresa/${slug}` },
+              { label: "CRM" },
+            ]
+          : [{ label: "Empresas", to: "/" }]
+      }
+    >
+      <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {error && (
         <div style={{ background: "var(--red-50)", color: "var(--red-500)", padding: "10px 32px", fontSize: 13 }}>
           {error}
@@ -564,6 +563,7 @@ export default function CrmPage() {
           />
         </Suspense>
       )}
-    </div>
+      </div>
+    </AppShell>
   );
 }

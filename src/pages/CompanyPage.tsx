@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import TopBar from "../components/TopBar";
+import AppShell from "../components/AppShell";
 import StatCard from "../components/StatCard";
+import { ArrowUpRight } from "lucide-react";
 import { client, Company, AdMetricDaily, SocialMetricDaily, ManualRevenue, logAudit } from "../lib/neonClient";
 import { useIsMobile } from "../lib/useIsMobile";
 
@@ -144,14 +145,13 @@ export default function CompanyPage() {
   }
 
   return (
-    <div>
-      <TopBar
-        breadcrumb={
-          company
-            ? [{ label: "Empresas", to: "/" }, { label: company.name }]
-            : [{ label: "Empresas", to: "/" }]
-        }
-      />
+    <AppShell
+      breadcrumb={
+        company
+          ? [{ label: "Empresas", to: "/" }, { label: company.name }]
+          : [{ label: "Empresas", to: "/" }]
+      }
+    >
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "24px 16px 60px" : "36px 32px 80px" }}>
         {error && (
           <div style={{ background: "var(--red-50)", color: "var(--red-500)", padding: 14, borderRadius: 10, marginBottom: 20 }}>
@@ -163,17 +163,19 @@ export default function CompanyPage() {
           <h1 style={{ fontSize: isMobile ? 19 : 24, fontWeight: 700, margin: 0 }}>{company?.name ?? "…"}</h1>
           <button
             onClick={() => navigate(`/empresa/${slug}/crm`)}
+            className="btn-gradient"
             style={{
-              background: "var(--ink)",
-              color: "#fff",
-              border: "none",
               borderRadius: 10,
               padding: "11px 20px",
               fontSize: 14,
               fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
             }}
           >
-            Abrir CRM →
+            <ArrowUpRight size={16} strokeWidth={2.4} />
+            Abrir CRM
           </button>
         </div>
 
@@ -389,7 +391,7 @@ export default function CompanyPage() {
           </section>
         )}
       </main>
-    </div>
+    </AppShell>
   );
 }
 
