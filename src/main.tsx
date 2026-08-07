@@ -5,6 +5,7 @@ import "./styles/tokens.css";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import RequireAuth from "./components/RequireAuth";
+import RequireAdmin from "./components/RequireAdmin";
 import { clientInitError } from "./lib/neonClient";
 
 // Só o Dashboard e o Login entram no bundle inicial — as demais telas carregam sob demanda,
@@ -50,9 +51,24 @@ class ErrorBoundary extends Component<{ children: React.ReactNode }, { error: Er
             {"\n"}
             {this.state.error.stack}
           </pre>
-          <p style={{ fontSize: 12, color: "#8592a8" }}>
+          <p style={{ fontSize: 12, color: "#8592a8", marginBottom: 16 }}>
             Copie esse texto e envie — isso diz exatamente o que travou.
           </p>
+          <button
+            onClick={() => window.location.assign("/")}
+            style={{
+              background: "#3068e8",
+              color: "#fff",
+              border: "none",
+              borderRadius: 8,
+              padding: "9px 18px",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Voltar pro início
+          </button>
         </div>
       );
     }
@@ -120,9 +136,11 @@ function Root() {
           path="/configuracoes"
           element={
             <RequireAuth>
-              <Suspense fallback={<PageLoadingFallback />}>
-                <ConfiguracoesPage />
-              </Suspense>
+              <RequireAdmin>
+                <Suspense fallback={<PageLoadingFallback />}>
+                  <ConfiguracoesPage />
+                </Suspense>
+              </RequireAdmin>
             </RequireAuth>
           }
         />

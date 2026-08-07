@@ -196,27 +196,34 @@ export default function CompanyPage() {
               ))}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 32 }}>
-              <StatCard label="Investimento" value={fmtBRL(spend)} delta={spendDelta} />
-              <StatCard label="Impressões" value={fmtInt(impressions)} delta={impressionsDelta} />
-              <StatCard label="Cliques" value={fmtInt(clicks)} delta={clicksDelta} />
-              <StatCard label="CPC médio" value={fmtBRL(cpc)} delta={cpcDelta} />
-              <StatCard label="CTR" value={`${ctr.toFixed(2)}%`} delta={ctrDelta} />
-              <StatCard
-                label="Receita (lançada manualmente)"
-                value={fmtBRL(revenueTotal)}
-                delta={revenueDelta}
-                hint={revenueTotal === 0 ? "nenhum lançamento neste período" : undefined}
-              />
-              <StatCard
-                label="ROAS"
-                value={roas !== null ? `${roas.toFixed(2)}x` : "—"}
-                delta={roasDelta}
-                hint={roas === null ? "sem investimento ou receita no período" : undefined}
-              />
+              {ads === null || revenue === null ? (
+                <PageSkeletonCards count={7} height={78} />
+              ) : (
+                <>
+                  <StatCard label="Investimento" value={fmtBRL(spend)} delta={spendDelta} />
+                  <StatCard label="Impressões" value={fmtInt(impressions)} delta={impressionsDelta} />
+                  <StatCard label="Cliques" value={fmtInt(clicks)} delta={clicksDelta} />
+                  <StatCard label="CPC médio" value={fmtBRL(cpc)} delta={cpcDelta} />
+                  <StatCard label="CTR" value={`${ctr.toFixed(2)}%`} delta={ctrDelta} />
+                  <StatCard
+                    label="Receita (lançada manualmente)"
+                    value={fmtBRL(revenueTotal)}
+                    delta={revenueDelta}
+                    hint={revenueTotal === 0 ? "nenhum lançamento neste período" : undefined}
+                  />
+                  <StatCard
+                    label="ROAS"
+                    value={roas !== null ? `${roas.toFixed(2)}x` : "—"}
+                    delta={roasDelta}
+                    hint={roas === null ? "sem investimento ou receita no período" : undefined}
+                  />
+                </>
+              )}
             </div>
             <div style={{ fontSize: 11.5, color: "var(--ink-faint)", marginTop: -22, marginBottom: 24 }}>
               vs. período anterior ({period} dias antes do período selecionado)
             </div>
+
 
             <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Evolução diária</h3>
             <MiniBarChart data={adsInPeriod.map((r) => ({ label: r.date.slice(5), value: Number(r.spend) }))} />
@@ -481,5 +488,25 @@ function EmptyState({ text }: { text: string }) {
     >
       {text}
     </div>
+  );
+}
+
+function PageSkeletonCards({ count = 3, height = 74 }: { count?: number; height?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <div
+          key={i}
+          style={{
+            height,
+            borderRadius: "var(--radius-md)",
+            background: "linear-gradient(90deg, var(--surface) 25%, var(--surface-hover) 37%, var(--surface) 63%)",
+            backgroundSize: "400% 100%",
+            animation: "shimmer 1.4s ease infinite",
+          }}
+        />
+      ))}
+      <style>{`@keyframes shimmer { 0% { background-position: 100% 0 } 100% { background-position: 0 0 } }`}</style>
+    </>
   );
 }
