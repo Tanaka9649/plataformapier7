@@ -42,41 +42,48 @@ export default function LoginPage() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "var(--gradient-brand-radial), var(--bg)",
+        background: "var(--ink)",
         padding: 24,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
+      <div className="gradient-blobs" />
       <div
         className="fade-in-up"
         style={{
           width: "100%",
           maxWidth: 380,
-          background: "var(--bg)",
-          border: "1px solid var(--border)",
+          background: "rgba(255,255,255,0.97)",
+          backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.2)",
           borderRadius: "var(--radius-lg)",
           boxShadow: "var(--shadow-xl)",
           padding: "40px 36px",
+          position: "relative",
+          zIndex: 1,
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 28 }}>
           <div
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: "var(--blue-500)",
+              width: 48,
+              height: 48,
+              borderRadius: 14,
+              background: "var(--gradient-button)",
               color: "#fff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               fontWeight: 700,
-              fontSize: 15,
+              fontSize: 16,
               marginBottom: 14,
+              boxShadow: "var(--shadow-glow)",
             }}
           >
             P7
           </div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "var(--ink)" }}>
+          <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0, color: "var(--ink)", letterSpacing: -0.3 }}>
             PIER7 Marketing & CRM
           </h1>
           <p style={{ fontSize: 13, color: "var(--ink-faint)", margin: "4px 0 0" }}>
@@ -133,17 +140,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
+            className="btn-gradient"
             style={{
               marginTop: 6,
-              background: "var(--blue-500)",
-              color: "#fff",
-              border: "none",
               borderRadius: 10,
-              padding: "12px 16px",
+              padding: "13px 16px",
               fontSize: 14,
-              fontWeight: 600,
+              fontWeight: 700,
               opacity: loading ? 0.7 : 1,
-              boxShadow: loading ? "none" : "var(--shadow-glow)",
             }}
           >
             {loading ? "Aguarde…" : mode === "entrar" ? "Entrar" : "Criar acesso e entrar"}

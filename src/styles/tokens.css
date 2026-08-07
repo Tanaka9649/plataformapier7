@@ -16,6 +16,12 @@
   --blue-600: #2455c7;
   --blue-700: #1c44a3;
 
+  /* Acento secundário — só pra gradientes e momentos de destaque, nunca pra
+     texto/estrutura. Fica na mesma família fria do azul, então soma em vez de
+     competir com a marca. */
+  --violet-500: #7c5cff;
+  --cyan-400: #22d3ee;
+
   --green-500: #1a9c6b;
   --green-50: #e7f7f0;
   --red-500: #e0483f;
@@ -30,6 +36,7 @@
   --shadow-lg: 0 12px 32px rgba(16, 26, 46, 0.08);
   --shadow-xl: 0 24px 56px rgba(16, 26, 46, 0.12);
   --shadow-glow: 0 8px 28px rgba(48, 104, 232, 0.16);
+  --shadow-glow-lg: 0 16px 48px rgba(48, 104, 232, 0.28);
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -41,9 +48,12 @@
   --duration-fast: 140ms;
   --duration-base: 220ms;
 
-  /* Assinatura visual: o mesmo glow radial suave usado no login, reaproveitado
-     no topo de outras telas pra dar continuidade de marca pela plataforma. */
+  /* Assinatura visual: gradiente vivo de três tons (azul → violeta → ciano),
+     usado nos heróis das telas principais e em botões primários — é o que dá
+     a sensação de "plataforma grande" em vez de formulário simples. */
   --gradient-brand-radial: radial-gradient(1200px 480px at 50% -12%, var(--blue-50), transparent 60%);
+  --gradient-hero: linear-gradient(135deg, var(--blue-700) 0%, var(--blue-500) 45%, var(--violet-500) 85%, var(--cyan-400) 120%);
+  --gradient-button: linear-gradient(135deg, var(--blue-500), var(--violet-500));
 
   --font-ui: "Inter", system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -144,4 +154,67 @@ a {
 }
 .fade-in-up {
   animation: fadeInUp var(--duration-base) var(--ease) both;
+}
+
+/* Formas de fundo animadas — flutuam devagar atrás do conteúdo, visíveis sem
+   precisar de interação nenhuma. É o que dá a sensação de "plataforma viva"
+   em vez de página estática. Sempre atrás do conteúdo (z-index baixo,
+   pointer-events: none) e nunca junto de texto, só em áreas de destaque. */
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -6%) scale(1.08); }
+  66% { transform: translate(-3%, 4%) scale(0.95); }
+}
+.gradient-blobs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.gradient-blobs::before,
+.gradient-blobs::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.5;
+  animation: blobFloat 14s var(--ease) infinite;
+}
+.gradient-blobs::before {
+  width: 480px;
+  height: 480px;
+  top: -160px;
+  left: -80px;
+  background: radial-gradient(circle, var(--blue-500), transparent 70%);
+}
+.gradient-blobs::after {
+  width: 420px;
+  height: 420px;
+  top: -100px;
+  right: -100px;
+  background: radial-gradient(circle, var(--violet-500), transparent 70%);
+  animation-delay: -7s;
+}
+
+/* Números/valores de destaque em gradiente — usado nos StatCards e títulos
+   principais, é o toque mais "SaaS grande" do conjunto todo. */
+.gradient-text {
+  background: var(--gradient-button);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Botão primário com gradiente + brilho — substitui o azul chapado nos CTAs
+   mais importantes da plataforma (entrar, ações principais). */
+.btn-gradient {
+  background: var(--gradient-button);
+  color: #fff;
+  border: none;
+  box-shadow: var(--shadow-glow);
+}
+.btn-gradient:hover:not(:disabled) {
+  box-shadow: var(--shadow-glow-lg);
+  transform: translateY(-1px);
 }

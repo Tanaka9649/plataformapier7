@@ -43,29 +43,28 @@ export default function DashboardPage() {
   const totalFollowers = social?.reduce((sum, r) => sum + (r.followers ?? 0), 0) ?? 0;
 
   return (
-    <div style={{ position: "relative" }}>
+    <div>
+      <TopBar />
       <div
-        aria-hidden
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 340,
-          background: "var(--gradient-brand-radial)",
-          pointerEvents: "none",
-          zIndex: 0,
+          position: "relative",
+          overflow: "hidden",
+          background: "var(--gradient-hero)",
+          padding: isMobile ? "28px 16px 34px" : "44px 32px 50px",
         }}
-      />
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <TopBar />
-        <main style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "24px 16px 60px" : "40px 32px 80px" }}>
-          <h1 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, margin: "0 0 6px" }}>Empresas</h1>
-          <p style={{ color: "var(--ink-faint)", fontSize: 14, margin: "0 0 24px" }}>
+      >
+        <div className="gradient-blobs" />
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 1100, margin: "0 auto" }}>
+          <h1 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, margin: "0 0 6px", color: "#fff", letterSpacing: -0.4 }}>
+            Empresas
+          </h1>
+          <p style={{ color: "rgba(255,255,255,0.82)", fontSize: 14, margin: 0 }}>
             Selecione uma empresa para ver tráfego pago, redes sociais ou abrir o CRM.
           </p>
-
-          {error && <ErrorBanner message={error} />}
+        </div>
+      </div>
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: isMobile ? "24px 16px 60px" : "32px 32px 80px" }}>
+        {error && <ErrorBanner message={error} />}
 
         <div
           style={{
@@ -73,6 +72,7 @@ export default function DashboardPage() {
             gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
             gap: 14,
             marginBottom: 48,
+            marginTop: isMobile ? -18 : -30,
           }}
         >
           {companies?.map((c, i) => (
@@ -85,7 +85,7 @@ export default function DashboardPage() {
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
                 padding: "20px",
-                boxShadow: "var(--shadow-xs)",
+                boxShadow: "var(--shadow-md)",
                 animationDelay: `${Math.min(i, 8) * 35}ms`,
               }}
             >
@@ -144,8 +144,7 @@ export default function DashboardPage() {
             <CompanyComparison companies={companies} ads={adsLast30} isMobile={isMobile} />
           </>
         )}
-        </main>
-      </div>
+      </main>
     </div>
   );
 }
